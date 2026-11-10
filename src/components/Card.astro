@@ -1,5 +1,6 @@
 ---
 import type { CollectionEntry } from "astro:content";
+import { Image } from "astro:assets";
 import { getPostUrl } from "@/utils/getPostPaths";
 import { toTransitionName } from "@/utils/toTransitionName";
 import Datetime from "./Datetime.astro";
@@ -8,24 +9,81 @@ type Props = {
   variant?: "h2" | "h3";
 } & CollectionEntry<"posts">;
 
-const { variant: Heading = "h2", id, data, filePath } = Astro.props;
+const { variant: Heading = "h2", id, data, filePath, body } = Astro.props;
 
-const { title, description, ...props } = data;
+const { title, description, tags, ogImage, ...props } = data;
+
+// Korean text reads at roughly 500 characters per minute.
+const readingMinutes = Math.max(1, Math.round((body ?? "").length / 500));
+
+const palette = [
+  { bg: "#3182f6", fg: "#ffffff" },
+  { bg: "#00c473", fg: "#ffffff" },
+  { bg: "#ffb331", fg: "#191f28" },
+  { bg: "#f04452", fg: "#ffffff" },
+  { bg: "#8b5cf6", fg: "#ffffff" },
+  { bg: "#191f28", fg: "#ffffff" },
+];
+const mainTag = tags?.[0] ?? "post";
+const hash = [...mainTag].reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+const color = palette[hash % palette.length];
+const imageMeta = typeof ogImage === "object" ? ogImage : undefined;
 ---
 
-<li class="my-6">
+<li class="border-border border-b last:border-b-0">
   <a
     href={getPostUrl(id, filePath, Astro.currentLocale)}
-    class:list={[
-      "text-accent inline-block text-lg font-medium",
-      "decoration-dashed underline-offset-4 hover:underline",
-      "focus-visible:no-underline focus-visible:underline-offset-0",
-    ]}
+    class="group flex items-start gap-4 py-6 sm:gap-6"
   >
-    <Heading transition:name={toTransitionName(id)}>
-      {title}
-    </Heading>
+    <div class="min-w-0 flex-1">
+      <Heading
+        transition:name={toTransitionName(id)}
+        class="group-hover:text-accent text-lg leading-snug font-bold tracking-tight transition-colors sm:text-xl"
+      >
+        {title}
+      </Heading>
+      <p
+        class="text-muted-foreground mt-2 line-clamp-2 text-[15px] leading-relaxed"
+      >
+        {description}
+      </p>
+      <div
+        class="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-2 text-sm"
+      >
+        <Datetime {...props} hideIcon />
+        <span aria-hidden="true">·</span>
+        <span>{readingMinutes}분</span>
+        {
+          tags
+            ?.slice(0, 2)
+            .map(tag => (
+              <span class="bg-muted rounded-full px-2 py-0.5 text-xs">
+                {tag}
+              </span>
+            ))
+        }
+      </div>
+    </div>
+    <div
+      class="hidden h-24 w-36 shrink-0 overflow-hidden rounded-xl sm:block"
+      style={`background:${color.bg};color:${color.fg}`}
+      aria-hidden="true"
+    >
+      {
+        imageMeta ? (
+          <Image
+            src={imageMeta}
+            alt=""
+            class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div class="flex h-full w-full items-end p-3 transition-transform duration-300 group-hover:scale-105">
+            <span class="text-base leading-tight font-bold break-all">
+              {mainTag}
+            </span>
+          </div>
+        )
+      }
+    </div>
   </a>
-  <Datetime {...props} />
-  <p>{description}</p>
 </li>
